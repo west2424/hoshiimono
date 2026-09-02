@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   collection,
   addDoc,
@@ -14,6 +15,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useLocalUser, setLocalUser } from "@/lib/useLocalUser";
 import { WishItem } from "@/lib/types";
 import WishCard from "@/components/WishCard";
 import AddItemModal from "@/components/AddItemModal";
@@ -23,13 +25,8 @@ const USERS = ["自分", "パートナー"];
 export default function Home() {
   const [items, setItems] = useState<WishItem[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
+  const userName = useLocalUser();
   const [filter, setFilter] = useState<"all" | "unpurchased" | "purchased">("all");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("hoshiimono_user");
-    if (stored) setUserName(stored);
-  }, []);
 
   useEffect(() => {
     const q = query(collection(db, "wishes"), orderBy("createdAt", "desc"));
@@ -38,11 +35,6 @@ export default function Home() {
     });
     return unsub;
   }, []);
-
-  const selectUser = (name: string) => {
-    localStorage.setItem("hoshiimono_user", name);
-    setUserName(name);
-  };
 
   const handleAdd = async (data: { title: string; url: string; price: string; note: string }) => {
     await addDoc(collection(db, "wishes"), {
@@ -82,7 +74,7 @@ export default function Home() {
             {USERS.map((u) => (
               <button
                 key={u}
-                onClick={() => selectUser(u)}
+                onClick={() => setLocalUser(u)}
                 className="bg-pink-500 text-white rounded-xl py-3 font-medium hover:bg-pink-600 transition text-lg"
               >
                 {u}
@@ -102,12 +94,20 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-800">🛍️ ほしいもの</h1>
             <p className="text-xs text-gray-400">{userName} としてログイン中</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
-          >
-            +
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/tasks"
+              className="text-sm text-gray-500 hover:text-pink-500 transition px-2 py-1"
+            >
+              ✅ タスク
+            </Link>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
+            >
+              +
+            </button>
+          </div>
         </div>
       </header>
 

@@ -8,3 +8,17 @@ export type WishItem = {
   purchased: boolean;
   createdAt: number;
 };
+
+export type TaskPriority = "high" | "medium" | "low";
+
+export type Task = {
+  id: string;
+  title: string;
+  note?: string;
+  assignee: string;
+  priority: TaskPriority;
+  dueDate?: string; // YYYY-MM-DD
+  done: boolean;
+  addedBy: string;
+  createdAt: number;
+};
