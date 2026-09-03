@@ -93,9 +93,6 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: Props) {
               {overdue && " 期限切れ"}
             </span>
           )}
-          <span className="text-xs text-gray-400 ml-auto">
-            担当: {task.assignee}
-          </span>
         </div>
       </div>
     </div>

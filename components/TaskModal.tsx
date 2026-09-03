@@ -6,31 +6,19 @@ import { Task, TaskPriority } from "@/lib/types";
 export type TaskFormData = {
   title: string;
   note: string;
-  assignee: string;
   priority: TaskPriority;
   dueDate: string;
 };
 
 type Props = {
-  users: string[];
-  defaultAssignee: string;
   editingTask?: Task | null;
   onSave: (data: TaskFormData) => void;
   onClose: () => void;
 };
 
-export default function TaskModal({
-  users,
-  defaultAssignee,
-  editingTask,
-  onSave,
-  onClose,
-}: Props) {
+export default function TaskModal({ editingTask, onSave, onClose }: Props) {
   const [title, setTitle] = useState(editingTask?.title ?? "");
   const [note, setNote] = useState(editingTask?.note ?? "");
-  const [assignee, setAssignee] = useState(
-    editingTask?.assignee ?? defaultAssignee
-  );
   const [priority, setPriority] = useState<TaskPriority>(
     editingTask?.priority ?? "medium"
   );
@@ -42,7 +30,6 @@ export default function TaskModal({
     onSave({
       title: title.trim(),
       note: note.trim(),
-      assignee,
       priority,
       dueDate,
     });
@@ -84,22 +71,6 @@ export default function TaskModal({
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                担当
-              </label>
-              <select
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white"
-              >
-                {users.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 優先度
               </label>
               <select
@@ -112,17 +83,17 @@ export default function TaskModal({
                 <option value="low">低</option>
               </select>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              期限
-            </label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                期限
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button

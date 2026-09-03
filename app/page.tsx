@@ -3,7 +3,6 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   collection,
   addDoc,
@@ -15,105 +14,107 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useLocalUser, setLocalUser } from "@/lib/useLocalUser";
-import { WishItem } from "@/lib/types";
-import WishCard from "@/components/WishCard";
-import AddItemModal from "@/components/AddItemModal";
+import { Task } from "@/lib/types";
+import TaskCard from "@/components/TaskCard";
+import TaskModal, { TaskFormData } from "@/components/TaskModal";
 
-const USERS = ["自分", "パートナー"];
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
-export default function Home() {
-  const [items, setItems] = useState<WishItem[]>([]);
+function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate)
+      return a.dueDate < b.dueDate ? -1 : 1;
+    if (!!a.dueDate !== !!b.dueDate) return a.dueDate ? -1 : 1;
+    if (a.priority !== b.priority)
+      return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    return b.createdAt - a.createdAt;
+  });
+}
+
+export default function Tasks() {
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const userName = useLocalUser();
-  const [filter, setFilter] = useState<"all" | "unpurchased" | "purchased">("all");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
 
   useEffect(() => {
-    const q = query(collection(db, "wishes"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
-      setItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as WishItem)));
+      setTasks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Task)));
     });
     return unsub;
   }, []);
 
-  const handleAdd = async (data: { title: string; url: string; price: string; note: string }) => {
-    await addDoc(collection(db, "wishes"), {
-      ...data,
-      addedBy: userName,
-      purchased: false,
-      createdAt: Date.now(),
-    });
+  const handleSave = async (data: TaskFormData) => {
+    const payload = {
+      title: data.title,
+      note: data.note,
+      priority: data.priority,
+      dueDate: data.dueDate,
+    };
+    if (editingTask) {
+      await updateDoc(doc(db, "tasks", editingTask.id), payload);
+    } else {
+      await addDoc(collection(db, "tasks"), {
+        ...payload,
+        done: false,
+        createdAt: Date.now(),
+      });
+    }
     setShowModal(false);
+    setEditingTask(null);
   };
 
   const handleToggle = async (id: string) => {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-    await updateDoc(doc(db, "wishes", id), { purchased: !item.purchased });
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    await updateDoc(doc(db, "tasks", id), { done: !task.done });
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("削除しますか？")) return;
-    await deleteDoc(doc(db, "wishes", id));
+    await deleteDoc(doc(db, "tasks", id));
   };
 
-  const filtered = items.filter((i) => {
-    if (filter === "unpurchased") return !i.purchased;
-    if (filter === "purchased") return i.purchased;
-    return true;
-  });
+  const openEdit = (task: Task) => {
+    setEditingTask(task);
+    setShowModal(true);
+  };
 
-  if (!userName) {
-    return (
-      <div className="min-h-screen bg-pink-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center">
-          <div className="text-5xl mb-4">🛍️</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">ほしいもの</h1>
-          <p className="text-gray-500 mb-8 text-sm">あなたはどちらですか？</p>
-          <div className="flex flex-col gap-3">
-            {USERS.map((u) => (
-              <button
-                key={u}
-                onClick={() => setLocalUser(u)}
-                className="bg-pink-500 text-white rounded-xl py-3 font-medium hover:bg-pink-600 transition text-lg"
-              >
-                {u}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const filtered = sortTasks(
+    tasks.filter((t) => {
+      if (filter === "todo" && t.done) return false;
+      if (filter === "done" && !t.done) return false;
+      return true;
+    })
+  );
+
+  const todoCount = tasks.filter((t) => !t.done).length;
 
   return (
     <div className="min-h-screen bg-pink-50">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">🛍️ ほしいもの</h1>
-            <p className="text-xs text-gray-400">{userName} としてログイン中</p>
+            <h1 className="text-xl font-bold text-gray-800">✅ タスク</h1>
+            <p className="text-xs text-gray-400">残り{todoCount}件</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/tasks"
-              className="text-sm text-gray-500 hover:text-pink-500 transition px-2 py-1"
-            >
-              ✅ タスク
-            </Link>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
-            >
-              +
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setShowModal(true);
+            }}
+            className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
+          >
+            +
+          </button>
         </div>
       </header>
 
       <main className="max-w-xl mx-auto px-4 py-4">
         <div className="flex gap-2 mb-4">
-          {(["all", "unpurchased", "purchased"] as const).map((f) => (
+          {(["all", "todo", "done"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -123,25 +124,28 @@ export default function Home() {
                   : "bg-white text-gray-500 hover:bg-gray-100"
               }`}
             >
-              {f === "all" ? "すべて" : f === "unpurchased" ? "未購入" : "購入済み"}
+              {f === "all" ? "すべて" : f === "todo" ? "未完了" : "完了"}
             </button>
           ))}
-          <span className="ml-auto text-sm text-gray-400 self-center">{filtered.length}件</span>
+          <span className="ml-auto text-sm text-gray-400 self-center">
+            {filtered.length}件
+          </span>
         </div>
 
         {filtered.length === 0 ? (
           <div className="text-center text-gray-400 py-16">
-            <div className="text-5xl mb-3">🎁</div>
-            <p>まだ何もありません</p>
+            <div className="text-5xl mb-3">🎉</div>
+            <p>タスクはありません</p>
             <p className="text-sm mt-1">+ ボタンで追加してみよう</p>
           </div>
         ) : (
           <div className="grid gap-3">
-            {filtered.map((item) => (
-              <WishCard
-                key={item.id}
-                item={item}
+            {filtered.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
                 onToggle={handleToggle}
+                onEdit={openEdit}
                 onDelete={handleDelete}
               />
             ))}
@@ -150,7 +154,14 @@ export default function Home() {
       </main>
 
       {showModal && (
-        <AddItemModal onAdd={handleAdd} onClose={() => setShowModal(false)} />
+        <TaskModal
+          editingTask={editingTask}
+          onSave={handleSave}
+          onClose={() => {
+            setShowModal(false);
+            setEditingTask(null);
+          }}
+        />
       )}
     </div>
   );

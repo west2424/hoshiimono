@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ほしいもの",
-  description: "夫婦で使う欲しいものリスト",
+  title: "タスク",
+  description: "自分専用のタスク管理アプリ",
 };
 
 export default function RootLayout({
