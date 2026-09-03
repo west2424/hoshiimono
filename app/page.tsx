@@ -11,9 +11,11 @@ import {
   deleteDoc,
   doc,
   query,
-  orderBy,
+  where,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { signInWithPopup, signOut } from "firebase/auth";
+import { db, auth, googleProvider } from "@/lib/firebase";
+import { useAuth } from "@/lib/useAuth";
 import { Task } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskModal, { TaskFormData } from "@/components/TaskModal";
@@ -33,20 +35,26 @@ function sortTasks(tasks: Task[]): Task[] {
 }
 
 export default function Tasks() {
+  const { user, loading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
 
   useEffect(() => {
-    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+    if (!user) return;
+    const q = query(collection(db, "tasks"), where("ownerUid", "==", user.uid));
     const unsub = onSnapshot(q, (snapshot) => {
       setTasks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Task)));
     });
     return unsub;
-  }, []);
+  }, [user]);
+
+  const handleLogin = () => signInWithPopup(auth, googleProvider);
+  const handleLogout = () => signOut(auth);
 
   const handleSave = async (data: TaskFormData) => {
+    if (!user) return;
     const payload = {
       title: data.title,
       note: data.note,
@@ -60,6 +68,7 @@ export default function Tasks() {
         ...payload,
         done: false,
         createdAt: Date.now(),
+        ownerUid: user.uid,
       });
     }
     setShowModal(false);
@@ -92,6 +101,30 @@ export default function Tasks() {
 
   const todoCount = tasks.filter((t) => !t.done).length;
 
+  if (loading) {
+    return <div className="min-h-screen bg-pink-50" />;
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center">
+          <div className="text-5xl mb-4">✅</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">タスク</h1>
+          <p className="text-gray-500 mb-8 text-sm">
+            Googleアカウントでログインしてください
+          </p>
+          <button
+            onClick={handleLogin}
+            className="bg-pink-500 text-white rounded-xl py-3 font-medium hover:bg-pink-600 transition text-lg w-full"
+          >
+            Googleでログイン
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-pink-50">
       <header className="bg-white shadow-sm sticky top-0 z-10">
@@ -100,15 +133,23 @@ export default function Tasks() {
             <h1 className="text-xl font-bold text-gray-800">✅ タスク</h1>
             <p className="text-xs text-gray-400">残り{todoCount}件</p>
           </div>
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setShowModal(true);
-            }}
-            className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
-          >
-            +
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-400 hover:text-gray-600 transition"
+            >
+              ログアウト
+            </button>
+            <button
+              onClick={() => {
+                setEditingTask(null);
+                setShowModal(true);
+              }}
+              className="bg-pink-500 text-white rounded-full w-10 h-10 text-2xl flex items-center justify-center hover:bg-pink-600 transition shadow"
+            >
+              +
+            </button>
+          </div>
         </div>
       </header>
 

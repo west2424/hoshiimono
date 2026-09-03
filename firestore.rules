@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Firebaseコンソール > Firestore Database > ルール にこの内容を貼り付けてください。
+// YOUR_EMAIL@example.com は、あなたがログインに使うGoogleアカウントのメールアドレスに置き換えてください。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tasks/{taskId} {
+      allow read, update, delete: if request.auth != null
+        && request.auth.token.email == "YOUR_EMAIL@example.com"
+        && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.auth.token.email == "YOUR_EMAIL@example.com"
+        && request.resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}
