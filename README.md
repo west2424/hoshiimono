@@ -16,11 +16,21 @@
 cp .env.local.example .env.local
 ```
 
-### 3. Firestore のセキュリティルールを設定する
+### 3. Google ログインを有効にする
 
-このアプリはログイン機能を持たない、個人利用向けの簡易構成です。第三者に `tasks` コレクションを読み書きされないよう、Firestore のルールを自分専用に絞ってください(例: 特定のプロジェクトからのアクセスのみ許可する、Firebase Authenticationを別途組み込んで `request.auth != null` を条件にする、など)。
+1. Firebase コンソールの「Authentication」→「Sign-in method」を開く
+2. 「Google」を選び、有効にして保存
 
-### 4. 開発サーバーを起動する
+### 4. Firestore のセキュリティルールを設定する
+
+このアプリはGoogleログインしたアカウントの中でも、特定の1人だけがタスクを読み書きできるように制限します。
+
+1. `firestore.rules` を開き、`YOUR_EMAIL@example.com` を自分がログインに使うGoogleアカウントのメールアドレスに書き換える
+2. Firebase コンソールの「Firestore Database」→「ルール」を開き、その内容をまるごと貼り付けて「公開」
+
+これで、指定したメールアドレス以外のGoogleアカウントではタスクの読み書きができなくなります。
+
+### 5. 開発サーバーを起動する
 
 ```bash
 npm install
@@ -32,3 +42,5 @@ npm run dev
 ## デプロイ(スマホからもアクセスできるようにする)
 
 [Vercel](https://vercel.com/new) にこのリポジトリを import し、`.env.local` と同じ環境変数をVercelの Environment Variables に設定してデプロイすると、発行されたURLにスマホ・PCどちらからでもアクセスできます。
+
+デプロイ後、発行されたURL(例: `hoshiimono.vercel.app`)を Firebase コンソールの「Authentication」→「Settings」→「承認済みドメイン」に追加してください。追加しないと、そのURL上でGoogleログインが失敗します。
